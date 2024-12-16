@@ -1,0 +1,144 @@
+<html><head><base href="." target="_blank"><meta charset="UTF-8"><style>
+body {
+    font-family: Arial, sans-serif;
+    max-width: 800px;
+    margin: 20px auto;
+    padding: 20px;
+    background: #f5f5f5;
+}
+
+.form-container {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+textarea {
+    width: 100%;
+    height: 150px;
+    margin: 10px 0;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 16px;
+}
+
+button {
+    background: #4CAF50;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background 0.3s;
+}
+
+button:hover {
+    background: #45a049;
+}
+
+.result {
+    margin-top: 20px;
+    background: #e9f7ef;
+    padding: 15px;
+    border-radius: 4px;
+    border-left: 4px solid #4CAF50;
+}
+
+.highlight {
+    background: #ffeb3b;
+    padding: 2px 4px;
+    border-radius: 2px;
+}
+</style></head><body>
+
+<div class="form-container">
+    <h2>Sistema de Censura de Dados Pessoais</h2>
+    <p>Cole o texto abaixo para censurar dados pessoais:</p>
+    <textarea id="inputText" placeholder="Cole seu texto aqui..."></textarea>
+    <button onclick="censurarDados()">Censurar Dados</button>
+    <div id="result" class="result" style="display: none;"></div>
+</div>
+
+<script>
+function censurarDados() {
+    let texto = document.getElementById('inputText').value;
+    
+    // Padrões de regex para identificação
+    const padroes = {
+        cpf: /(\d{3}\.?\d{3}\.?\d{3}-?\d{2})/g,
+        email: /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+)/g,
+        telefone: /(\(?[0-9]{2}\)?\s?[0-9]{4,5}-?[0-9]{4})/g,
+        nome: /\b([A-Z][a-zÀ-ú]+\s[A-Z][a-zÀ-ú]+(\s[A-Z][a-zÀ-ú]+)*)\b/g
+    };
+
+    // Função para criar máscara
+    function criarMascara(tipo, valor) {
+        switch(tipo) {
+            case 'cpf':
+                return valor.slice(0, 3) + '.***.***-' + valor.slice(-2);
+            case 'email':
+                let [usuario, dominio] = valor.split('@');
+                return usuario.slice(0, 2) + '***@' + dominio.slice(0, 2) + '***.' + dominio.split('.').pop();
+            case 'telefone':
+                return '(' + valor.slice(0, 2) + ') ****-' + valor.slice(-4);
+            case 'nome':
+                let nomes = valor.split(' ');
+                return nomes.map((nome, index) => {
+                    if (index === 0) {
+                        // Primeiro nome: mostra primeira letra
+                        return nome[0] + '.';
+                    } else if (index === nomes.length - 1) {
+                        // Último nome: mostra completo
+                        return nome;
+                    } else {
+                        // Nomes do meio: apenas inicial
+                        return nome[0] + '.';
+                    }
+                }).join(' ');
+            default:
+                return '****';
+        }
+    }
+
+    // Realizar substituições
+    let textoCensurado = texto;
+    let encontrados = {
+        cpf: [],
+        email: [],
+        telefone: [],
+        nome: []
+    };
+
+    // Procurar e substituir cada tipo de dado
+    for (let tipo in padroes) {
+        textoCensurado = textoCensurado.replace(padroes[tipo], (match) => {
+            encontrados[tipo].push(match);
+            return criarMascara(tipo, match);
+        });
+    }
+
+    // Exibir resultado
+    const resultDiv = document.getElementById('result');
+    resultDiv.style.display = 'block';
+    resultDiv.innerHTML = `<h3>Texto Censurado:</h3><p>${textoCensurado}</p>`;
+
+    // Adicionar relatório de dados encontrados
+    let relatorio = '<h3>Dados encontrados e censurados:</h3>';
+    for (let tipo in encontrados) {
+        if (encontrados[tipo].length > 0) {
+            relatorio += `<p><strong>${tipo.toUpperCase()}:</strong> ${encontrados[tipo].length} ocorrência(s)</p>`;
+            relatorio += `<ul>`;
+            encontrados[tipo].forEach(dado => {
+                relatorio += `<li><span class="highlight">${dado}</span> → ${criarMascara(tipo, dado)}</li>`;
+            });
+            relatorio += `</ul>`;
+        }
+    }
+    resultDiv.innerHTML += relatorio;
+}
+</script>
+
+</body></html>
